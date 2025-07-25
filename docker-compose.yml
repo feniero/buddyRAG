@@ -1,0 +1,75 @@
+services:
+
+  weaviate:
+    container_name: rag-chatbot-weaviate
+    image: semitechnologies/weaviate:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
+      - DEFAULT_VECTORIZER_MODULE=none
+      - CLUSTER_HOSTNAME="node1"
+      - CLUSTER_SINGLE_NODE=true
+
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+  ollama:
+    container_name: rag-chatbot-ollama
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./init-ollama.sh:/init.sh
+    entrypoint: ["/bin/bash","-c","/init.sh"]
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/ollama_ready.flag"]
+      interval: 40s
+      timeout: 30s
+      retries: 15
+    restart: unless-stopped
+    environment:
+      - LLM_MODEL=llama3.1:8b
+      - EMBEDDING_MODEL=nomic-embed-text
+
+  backend:
+    container_name: rag-chatbot-backend
+    build: ./backend
+    volumes:
+      - ./ingest/input_files:/app/ingest/input_files
+    depends_on:
+      - ollama
+      - weaviate
+    ports:
+      - "8000:8000"
+    environment:
+      - EMBEDDING_MODEL=nomic-embed-text
+      - LLM_MODEL=llama3.1:8b
+
+  ui:
+    container_name: rag-chatbot-ui
+    build: ./ui
+    ports:
+      - "8501:8501"
+    depends_on:
+      ollama:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  ingest:
+    container_name: rag-chatbot-ingest
+    build: ./ingest
+    volumes:
+      - ./input_files:/app/input_files
+    depends_on:
+      - ollama
+      - weaviate
+    environment:
+      - EMBEDDING_MODEL=nomic-embed-text
+volumes:
+  weaviate_data:
+  ollama_data:
