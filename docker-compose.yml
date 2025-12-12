@@ -2,7 +2,7 @@ services:
 
   weaviate:
     container_name: rag-chatbot-weaviate
-    image: semitechnologies/weaviate:latest
+    image: semitechnologies/weaviate:1.32.2
     ports:
       - "8080:8080"
     environment:
@@ -18,7 +18,7 @@ services:
 
   ollama:
     container_name: rag-chatbot-ollama
-    image: ollama/ollama
+    image: ollama/ollama:0.13.2
     ports:
       - "11434:11434"
     volumes:
@@ -32,8 +32,8 @@ services:
       retries: 15
     restart: unless-stopped
     environment:
-      - LLM_MODEL=llama3.1:8b
-      - EMBEDDING_MODEL=nomic-embed-text
+      - LLM_MODEL=${LLM_MODEL}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
 
   backend:
     container_name: rag-chatbot-backend
@@ -46,8 +46,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - EMBEDDING_MODEL=nomic-embed-text
-      - LLM_MODEL=llama3.1:8b
+      - LLM_MODEL=${LLM_MODEL}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
 
   ui:
     container_name: rag-chatbot-ui
@@ -69,7 +69,7 @@ services:
       - ollama
       - weaviate
     environment:
-      - EMBEDDING_MODEL=nomic-embed-text
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
 volumes:
   weaviate_data:
   ollama_data:
